@@ -1,6 +1,5 @@
 package ie.revenue.ccn.integration.business.service;
 
-import ie.revenue.ccn.integration.business.exception.CountryNotFoundException;
 import ie.revenue.ccn.integration.exceptions.CountryNotFoundException;
 
 import java.util.Map;

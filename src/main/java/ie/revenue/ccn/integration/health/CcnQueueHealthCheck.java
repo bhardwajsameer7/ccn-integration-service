@@ -2,9 +2,12 @@ package ie.revenue.ccn.integration.health;
 
 import ie.revenue.ccn.integration.business.service.OrchestrationService;
 import ie.revenue.ccn.integration.configuration.CsiConfigProperties;
+import ie.revenue.ccn.integration.dto.QueueStatusResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -19,11 +22,6 @@ public class CcnQueueHealthCheck {
         this.csiConfigProperties = csiConfigProperties;
     }
 
-    /**
-     * Scheduled task that checks CCN queue connectivity every 30 minutes.
-     * - initialDelay: Wait 30 minutes after startup before first check
-     * - fixedRate: Run every 30 minutes thereafter
-     */
     @Scheduled(
             initialDelayString = "${ccn.queue.health-check.initial-delay}",
             fixedRateString = "${ccn.queue.health-check.interval}"
