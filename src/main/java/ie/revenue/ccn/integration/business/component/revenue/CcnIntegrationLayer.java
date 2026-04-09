@@ -1,9 +1,13 @@
 package ie.revenue.ccn.integration.business.component.revenue;
 
 import ie.revenue.ccn.integration.business.component.njcsi.CcnConnection;
+import ie.revenue.ccn.integration.business.component.njcsi.CcnQueue;
+import ie.revenue.ccn.integration.dto.QueueStatusResponse;
+import ie.revenue.ccn.integration.model.MessageAndCorrelationId;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -14,24 +18,21 @@ public class CcnIntegrationLayer {
     private final String applicationName;
 
     @Getter
-    private final boolean isCcnGatewayEnabled;
+    private final boolean ccnGatewayEnabled;
 
     private final CcnConnection ccnConnection;
 
-    // Efficient lookup: messageType → queue config
     private final Map<String, CcnQueueConfig> messageTypeToQueueConfigMap;
-
-    // Precomputed list for iteration (browse/status)
     private final List<CcnQueueConfig> precomputedCcnQueueConfigList;
 
     public CcnIntegrationLayer(String applicationName,
-                               boolean isCcnGatewayEnabled,
+                               boolean ccnGatewayEnabled,
                                CcnConnection ccnConnection,
                                Map<String, CcnQueueConfig> messageTypeToQueueConfigMap,
                                List<CcnQueueConfig> precomputedCcnQueueConfigList) {
 
         this.applicationName = applicationName;
-        this.isCcnGatewayEnabled = isCcnGatewayEnabled;
+        this.ccnGatewayEnabled = ccnGatewayEnabled;
         this.ccnConnection = ccnConnection;
         this.messageTypeToQueueConfigMap = messageTypeToQueueConfigMap;
         this.precomputedCcnQueueConfigList = precomputedCcnQueueConfigList;
@@ -71,10 +72,6 @@ public class CcnIntegrationLayer {
         }
     }
 
-    /**
-     * Checks connectivity status of all queues configured for this application.
-     * Only opens a connection and reads queue depth.
-     */
     public List<QueueStatusResponse> checkQueueStatus() {
 
         List<QueueStatusResponse> statuses = new ArrayList<>();

@@ -48,10 +48,11 @@ public class CcnConnection {
 
         } catch (NjcsiException e) {
             log.error("Error working with NJCSI connection", e);
-            throw new CcnConnectionException("Error working with NJCSI connection");
+            throw new CcnConnectionException("Error working with NJCSI connection", e);
 
         } catch (Exception e) {
-            throw new CcnConnectionException("Error working with NJCSI connection");
+            log.error("Unexpected error working with NJCSI connection", e);
+            throw new CcnConnectionException("Error working with NJCSI connection", e);
         }
     }
 }

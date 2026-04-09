@@ -1,12 +1,25 @@
 package ie.revenue.ccn.integration.controller;
 
 import ie.revenue.ccn.integration.business.service.OrchestrationService;
+import ie.revenue.ccn.integration.business.service.SendMessageCommand;
+import ie.revenue.ccn.integration.dto.CcnToClientResponse;
+import ie.revenue.ccn.integration.dto.QueueStatusResponse;
 import ie.revenue.ccn.integration.model.MessageAndCorrelationId;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
-import org.intellij.lang.annotations.Pattern;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/restful/ccn/integration")
@@ -30,25 +43,32 @@ public class CcnIntegrationController {
             String countryCode,
             @RequestHeader(name = "uniqueMessageId", required = false) String messageId,
             @RequestBody @NotBlank(message = "Request payload must not be blank") String payload
-    ) throws Exception {
+    ) {
 
         log.info("Received request: applicationType={}, messageType={}, countryCode={}",
                 applicationType, messageType, countryCode);
 
-        MessageAndCorrelationId messageAndCorrelationId =
-                orchestrationService.send(applicationType, messageType, countryCode, payload, messageId, messageId);
+        SendMessageCommand command = new SendMessageCommand(
+                applicationType,
+                messageType,
+                countryCode,
+                payload,
+                messageId,
+                messageId
+        );
+
+        MessageAndCorrelationId response = orchestrationService.send(command);
 
         log.info("Received response from orchestration service: applicationType={}, messageType={}, countryCode={}, messageId={}, correlationId={}",
                 applicationType,
                 messageType,
                 countryCode,
-                messageAndCorrelationId.getMessageId(),
-                messageAndCorrelationId.getCorrelationId());
+                response.getMessageId(),
+                response.getCorrelationId());
 
-        // Return the response to client application
         return ResponseEntity.ok(
                 new CcnToClientResponse(
-                        messageAndCorrelationId.getMessageId(),
+                        response.getMessageId(),
                         "SUCCESS",
                         "Message sent to CCN successfully",
                         "200"
@@ -56,13 +76,6 @@ public class CcnIntegrationController {
         );
     }
 
-    /**
-     * Checks the connectivity status of all CCN queues for the given application.
-     * This method works generically for any registered application (e.g. DAC9, DAC4, DAC8, DAC2).
-     *
-     * @param applicationType the application to check (e.g. DAC9)
-     * @return flat list of {@link QueueStatusResponse}, one entry per queue
-     */
     @GetMapping("/{applicationType}/queue-status")
     public ResponseEntity<List<QueueStatusResponse>> checkQueueStatus(
             @PathVariable @NotBlank(message = "application type must not be blank") String applicationType

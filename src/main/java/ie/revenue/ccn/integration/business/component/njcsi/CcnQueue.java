@@ -1,10 +1,17 @@
 package ie.revenue.ccn.integration.business.component.njcsi;
 
 import ie.revenue.ccn.integration.exceptions.CcnConnectionException;
-import ie.revenue.ccn.integration.external.*;
+import ie.revenue.ccn.integration.external.NjcsiDequeuedMessage;
+import ie.revenue.ccn.integration.external.NjcsiDestination;
+import ie.revenue.ccn.integration.external.NjcsiEnqueuedMessage;
+import ie.revenue.ccn.integration.external.NjcsiQueue;
+import ie.revenue.ccn.integration.external.NjcsiQueueBrowser;
+import ie.revenue.ccn.integration.external.NjcsiQueueMessageType;
+import ie.revenue.ccn.integration.external.NjcsiQueueSender;
+import ie.revenue.ccn.integration.model.MessageAndCorrelationId;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.Gauge;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -114,14 +121,17 @@ public class CcnQueue {
 
                                     sender.passMessageID(true);
                                     sender.passCorrelationID(true);
-                                    sender.setReplyToQueue(replyToQueueName,
-                                            new NjcsiDestination(replyToQueueDestination));
+
+                                    if (replyToQueueName != null && replyToQueueDestination != null) {
+                                        sender.setReplyToQueue(replyToQueueName,
+                                                new NjcsiDestination(replyToQueueDestination));
+                                    }
 
                                     NjcsiEnqueuedMessage message =
                                             buildEnqueuedMessage(messageType, messageBody, messageId, correlationId, destination);
 
                                     sender.send(message);
-                                    return buildResponse(message);
+                                    return buildResponse(messageId, correlationId);
                                 }
                             } catch (Exception e) {
                                 log.error("Error occurred while sending message to queue {}", queueName, e);
@@ -133,10 +143,24 @@ public class CcnQueue {
         );
     }
 
-    private Object buildResponse(NjcsiEnqueuedMessage message) {
+    private MessageAndCorrelationId buildResponse(String messageId, String correlationId) {
+        return new MessageAndCorrelationId(messageId, correlationId);
     }
 
-    private NjcsiEnqueuedMessage buildEnqueuedMessage(String messageType, String messageBody, String messageId, String correlationId, String destination) {
+    private NjcsiEnqueuedMessage buildEnqueuedMessage(String messageType,
+                                                      String messageBody,
+                                                      String messageId,
+                                                      String correlationId,
+                                                      String destination) {
+        // Placeholder implementation while using a local stubbed NJCSI dependency.
+        // Keep parameters for forward compatibility with the real library contract.
+        log.debug("Building enqueued message: type={}, destination={}, messageId={}, correlationId={}, payloadSize={}",
+                messageType,
+                destination,
+                messageId,
+                correlationId,
+                messageBody == null ? 0 : messageBody.length());
+        return new NjcsiEnqueuedMessage();
     }
 
     public int checkDepth(CcnConnection connection) {
@@ -182,7 +206,7 @@ public class CcnQueue {
                             logMessageDetails(csiMessage);
 
                             consumeReceivedMessage(
-                                    new String(csiMessage.getData().getBytes(), StandardCharsets.UTF_8),
+                                    new String(csiMessage.getData(), StandardCharsets.UTF_8),
                                     Base64.getEncoder().encodeToString(csiMessage.getMessageID()),
                                     Base64.getEncoder().encodeToString(csiMessage.getCorrelationID())
                             );
