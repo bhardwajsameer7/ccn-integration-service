@@ -2,14 +2,12 @@ package ie.revenue.ccn.integration.business.service;
 
 import ie.revenue.ccn.integration.business.component.revenue.CcnIntegrationLayer;
 import ie.revenue.ccn.integration.dto.QueueStatusResponse;
-import ie.revenue.ccn.integration.exceptions.ApplicationNotFoundException;
 import ie.revenue.ccn.integration.exceptions.CcnGatewayUnavailableException;
 import ie.revenue.ccn.integration.model.MessageAndCorrelationId;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -17,12 +15,12 @@ import java.util.Set;
 public class OrchestrationService {
 
     private final CountryMappingService countryMappingService;
-    private final Map<String, CcnIntegrationLayer> ccnIntegrationLayerMap;
+    private final ApplicationIntegrationRegistry applicationIntegrationRegistry;
 
     public OrchestrationService(CountryMappingService countryMappingService,
-                                Map<String, CcnIntegrationLayer> ccnIntegrationLayerMap) {
+                                ApplicationIntegrationRegistry applicationIntegrationRegistry) {
         this.countryMappingService = countryMappingService;
-        this.ccnIntegrationLayerMap = ccnIntegrationLayerMap;
+        this.applicationIntegrationRegistry = applicationIntegrationRegistry;
     }
 
     public MessageAndCorrelationId send(SendMessageCommand command) {
@@ -30,12 +28,8 @@ public class OrchestrationService {
         log.info("Start processing request in OrchestrationService: applicationType={}, uniqueMessageId={}",
                 command.applicationType(), command.messageId());
 
-        CcnIntegrationLayer ccnIntegrationLayer = ccnIntegrationLayerMap.get(command.applicationType());
-
-        if (ccnIntegrationLayer == null) {
-            log.error("No ccnIntegrationLayer found with type: {}", command.applicationType());
-            throw new ApplicationNotFoundException(command.applicationType());
-        }
+        CcnIntegrationLayer ccnIntegrationLayer =
+                applicationIntegrationRegistry.getByApplicationType(command.applicationType());
 
         if (!ccnIntegrationLayer.isCcnGatewayEnabled()) {
             log.error("CCN Gateway is not enabled for application type: {}", command.applicationType());
@@ -55,20 +49,15 @@ public class OrchestrationService {
     }
 
     public Set<String> getApplicationTypes() {
-        return ccnIntegrationLayerMap.keySet();
+        return applicationIntegrationRegistry.getApplicationTypes();
     }
 
     public List<QueueStatusResponse> checkQueueStatus(String applicationType) {
 
         log.info("Checking queue status for application: {}", applicationType);
 
-        CcnIntegrationLayer ccnIntegrationLayer =
-                ccnIntegrationLayerMap.get(applicationType);
-
-        if (ccnIntegrationLayer == null) {
-            throw new ApplicationNotFoundException(applicationType);
-        }
-
-        return ccnIntegrationLayer.checkQueueStatus();
+        return applicationIntegrationRegistry
+                .getByApplicationType(applicationType)
+                .checkQueueStatus();
     }
 }

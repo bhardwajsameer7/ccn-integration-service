@@ -12,6 +12,7 @@ import ie.revenue.ccn.integration.external.NjcsiConnectionFactory;
 import ie.revenue.ccn.integration.external.NjcsiInternalException;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.support.BasicAuthenticationInterceptor;
@@ -33,18 +34,19 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
     private final MeterRegistry meterRegistry;
     private final TaskScheduler taskScheduler;
     private final RestClient.Builder restClientBuilder;
+    private final ObjectProvider<Map<String, CcnIntegrationLayer>> integrationLayersProvider;
 
     public CcnIntegrationServiceConfiguration(CsiConfigProperties csiConfigProperties,
                                               MeterRegistry meterRegistry,
                                               TaskScheduler taskScheduler,
-                                              RestClient.Builder restClientBuilder) {
+                                              RestClient.Builder restClientBuilder,
+                                              ObjectProvider<Map<String, CcnIntegrationLayer>> integrationLayersProvider) {
         this.csiConfigProperties = csiConfigProperties;
         this.meterRegistry = meterRegistry;
         this.taskScheduler = taskScheduler;
         this.restClientBuilder = restClientBuilder;
+        this.integrationLayersProvider = integrationLayersProvider;
     }
-
-    // ===================== COUNTRY MAPPING =====================
 
     @Bean
     public CountryMappingService countryMappingService() {
@@ -53,36 +55,36 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
 
         csiConfigProperties.getApplications().forEach((applicationType, appConfig) -> {
 
-            if (appConfig.getCountryMap() == null || appConfig.getCountryMap().isEmpty()) {
+            if (appConfig.getCountryMappings() == null || appConfig.getCountryMappings().isEmpty()) {
                 log.warn("No country mapping defined for application type: {}", applicationType);
                 return;
             }
 
-            appConfig.getCountryMap().forEach((mappingName, countryMapping) -> {
+            Map<String, String> countryToDestination = new HashMap<>();
+            appConfig.getCountryMappings().forEach((mappingName, countryMapping) -> {
 
                 if (countryMapping != null &&
                     countryMapping.getCountries() != null &&
                     countryMapping.getFormat() != null) {
 
-                    Map<String, String> countryToDestination = new HashMap<>();
-
                     for (String country : countryMapping.getCountries()) {
                         countryToDestination.put(country,
                                 countryMapping.getFormat().formatted(country));
                     }
-
-                    applicationTypeToCountryToDestinationMap.put(applicationType, countryToDestination);
                 }
             });
+
+            applicationTypeToCountryToDestinationMap.put(applicationType, countryToDestination);
         });
 
         return new CountryMappingService(applicationTypeToCountryToDestinationMap);
     }
 
-    // ===================== SCHEDULER =====================
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         taskRegistrar.setTaskScheduler(taskScheduler);
+
+        Map<String, CcnIntegrationLayer> layers = integrationLayersProvider.getIfAvailable(HashMap::new);
 
         csiConfigProperties.getApplications().forEach((applicationType, appConfig) -> {
 
@@ -91,7 +93,11 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
                 return;
             }
 
-            CcnIntegrationLayer layer = ccnIntegrationLayersByApplicationType().get(applicationType);
+            CcnIntegrationLayer layer = layers.get(applicationType);
+            if (layer == null) {
+                log.warn("No integration layer registered for application type {}", applicationType);
+                return;
+            }
 
             taskRegistrar.addFixedDelayTask(
                     layer::browse,
@@ -100,33 +106,27 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
         });
     }
 
-    // ===================== CSI CONFIG FILE =====================
-
     @Bean
     public Map<String, CsiConfigFileGenerator> csiConfigFileMapByApplicationType() {
 
         Map<String, CsiConfigFileGenerator> map = new HashMap<>();
 
-        csiConfigProperties.getApplications().forEach((applicationType, appConfig) -> {
-
-            map.put(applicationType,
-                    new CsiConfigFileGenerator(
-                            appConfig.getApplicationName(),
-                            appConfig.getRemoteApiProxy().getName(),
-                            appConfig.getRemoteApiProxy().getAddress(),
-                            appConfig.getRemoteApiProxy().getMaxPoolSize(),
-                            appConfig.getRemoteApiProxy().getMaxPoolIdleTime(),
-                            appConfig.getRemoteApiProxy().getPoolShrinkingInterval()
-                    ));
-        });
+        csiConfigProperties.getApplications().forEach((applicationType, appConfig) -> map.put(applicationType,
+                new CsiConfigFileGenerator(
+                        appConfig.getApplicationName(),
+                        appConfig.getRemoteApiProxy().getName(),
+                        appConfig.getRemoteApiProxy().getAddress(),
+                        appConfig.getRemoteApiProxy().getMaxPoolSize(),
+                        appConfig.getRemoteApiProxy().getMaxPoolIdleTime(),
+                        appConfig.getRemoteApiProxy().getPoolShrinkingInterval()
+                )));
 
         return map;
     }
 
-    // ===================== CONNECTION FACTORY =====================
-
     @Bean
-    public Map<String, NjcsiConnectionFactory> njcsiConnectionFactoryMapByApplicationType() {
+    public Map<String, NjcsiConnectionFactory> njcsiConnectionFactoryMapByApplicationType(
+            Map<String, CsiConfigFileGenerator> csiConfigFileMapByApplicationType) {
 
         Map<String, NjcsiConnectionFactory> map = new HashMap<>();
 
@@ -134,23 +134,21 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
             try {
                 map.put(applicationType,
                         NjcsiConnectionFactory.getInstance(
-                                csiConfigFileMapByApplicationType()
+                                csiConfigFileMapByApplicationType
                                         .get(applicationType)
                                         .asInputStream()
                         ));
             } catch (NjcsiInternalException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Unable to create NJCSI connection factory for " + applicationType, e);
             }
         });
 
         return map;
     }
 
-    // ===================== INTEGRATION LAYERS =====================
-
     @Bean
-    public Map<String, CcnIntegrationLayer> ccnIntegrationLayersByApplicationType()
-            throws NjcsiInternalException {
+    public Map<String, CcnIntegrationLayer> ccnIntegrationLayersByApplicationType(
+            Map<String, NjcsiConnectionFactory> njcsiConnectionFactoryMapByApplicationType) {
 
         Map<String, CcnIntegrationLayer> map = new HashMap<>();
 
@@ -161,7 +159,7 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
                     appConfig.getApplicationKey(),
                     appConfig.getUsername(),
                     appConfig.getPassword(),
-                    njcsiConnectionFactoryMapByApplicationType().get(applicationType)
+                    njcsiConnectionFactoryMapByApplicationType.get(applicationType)
             );
 
             RestClient restClient = restClientBuilder.clone()
@@ -179,8 +177,7 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
             Map<String, CcnQueueConfig> messageTypeMap =
                     buildMessageTypeToQueueConfigMap(queueConfigMap);
 
-            List<CcnQueueConfig> list =
-                    new ArrayList<>(queueConfigMap.values());
+            List<CcnQueueConfig> list = new ArrayList<>(queueConfigMap.values());
 
             CcnIntegrationLayer layer = new CcnIntegrationLayer(
                     applicationType,
@@ -195,8 +192,6 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
 
         return map;
     }
-
-    // ===================== HELPERS =====================
 
     private Map<String, CcnQueueConfig> buildMessageTypeToQueueConfigMap(
             Map<String, CcnQueueConfig> queueMap) {
@@ -265,6 +260,4 @@ public class CcnIntegrationServiceConfiguration implements SchedulingConfigurer 
                     "Invalid replyTo for queue " + queueName);
         }
     }
-
-
 }
