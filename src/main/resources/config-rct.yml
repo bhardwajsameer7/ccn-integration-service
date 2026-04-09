@@ -1,0 +1,69 @@
+ie:
+  revenue:
+    ccncsi-integration:
+      applications:
+        dac9:
+          # Pull all the "application-level" out from individual queue configs and place here
+          application-name: DAC9-ASYNC-RCT-APP.AEOI
+          application-key: APPLICATION--KEY #${ie.revenue.deployments.passwords.CCSCSI_DAC9_APP_KEY}
+          username: TEST-USR.DAC9
+          password: 2FRwxeEd3! # Need to be tokenized
+          channel: dac9
+          browse: true
+          destination: CUSTTAX.IE
+
+          # Only other info needed for generating csiconfig.txt dynamically
+          remote-api-proxy:
+            name: DAC9-ASYNC-RCT-RAP.AEOI
+            address: ccnproxy-conf:4152
+            maxPoolSize: 1
+            maxPoolIdleTime: 10
+            poolShrinkingInterval: 10
+
+          # From what I can see, we always send all messages received from CCN/CSI to the same endpoint
+          received-messages-target:
+            url: ${ie.revenue.serviceproxy}/dac9-web/api{ccn-queue}/{ccn-message-type}
+            username: dac9User
+            password: password #${ie.revenue.deployments.passwords.DAC9_INTEGRATION_PASSWORD}
+
+          received-messages-config:
+            frequency: 15m
+            max-messages-per-poll: 10
+
+          queues:
+            # Give each queue a name that is consistent across environments
+            main-queue:
+              queue-name: DAC9-RCT-QUE.AEOI
+              # For reply-to values, reference the queue config of the queue rather than repeating the name (and destination)
+              reply-to: report-queue
+              # Use these queues to send messages with these types to CCN/CSI with the mapped message type
+              outbound-message-types:
+                DAC4-INIT-MSG.AEOI: request
+                DAC4-CORR-MSG.AEOI: request
+                DAC4-STATUS-MSG.AEOI: reply
+              # Receive messages from this queue; i.e. activate polling of the queue
+              receive-messages: true
+
+            report-queue:
+              queue-name: DAC9-CCN-REPORT-RCT-QUE.AEOI
+              receive-messages: true
+              # reply-to nor message types needed if not sending messages
+
+          ccn-gateway-enabled: true # to be tokenized
+
+          country-mappings:
+            custtax:
+              countries: [BG, HR, CY, DK, EE, FR, EL, HU, IE, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, GB]
+              format: CUSTTAX.%s
+            tax:
+              countries: [AT, BE, DE, FI, IT, SE]
+              format: TAX.%s
+            cust:
+              countries: [CZ]
+              format: CUST.%s
+
+ccn:
+  queue:
+    health-check:
+      initial-delay: 0
+      interval: 1800000

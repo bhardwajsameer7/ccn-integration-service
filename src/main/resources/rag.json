@@ -1,0 +1,57 @@
+{
+  "topics": [
+    { "title": "Driving", "content": "Always check mirrors before turning." },
+    { "title": "Speed", "content": "Follow Irish road speed limits." },
+
+    { "title": "Mirrors", "content": "Use MSM routine: Mirror, Signal, Manoeuvre before changing direction." },
+    { "title": "Indicators", "content": "Always signal in advance to inform other road users of your intention." },
+
+    { "title": "Stopping", "content": "Check mirrors before slowing down or stopping." },
+    { "title": "Braking", "content": "Brake gently and progressively to avoid sudden stops." },
+
+    { "title": "Junctions", "content": "Approach junctions slowly and be prepared to stop if necessary." },
+    { "title": "Roundabouts", "content": "Yield to traffic coming from the right and choose correct lane." },
+
+    { "title": "Lane Discipline", "content": "Stay in your lane and avoid unnecessary lane changes." },
+    { "title": "Overtaking", "content": "Only overtake when it is safe and legal to do so." },
+
+    { "title": "Parking", "content": "Always check surroundings and use mirrors when parking." },
+    { "title": "Reverse", "content": "Look all around and move slowly while reversing." },
+
+    { "title": "Pedestrians", "content": "Always give way to pedestrians at crossings." },
+    { "title": "Cyclists", "content": "Maintain safe distance and be cautious around cyclists." },
+
+    { "title": "Weather", "content": "Adjust speed and increase stopping distance in bad weather." },
+    { "title": "Fog", "content": "Use fog lights and drive slowly in low visibility." },
+
+    { "title": "Night Driving", "content": "Use dipped headlights when driving at night or in poor visibility." },
+    { "title": "Headlights", "content": "Switch on headlights in low light conditions." },
+
+    { "title": "Seatbelt", "content": "Always wear seatbelt before starting the car." },
+    { "title": "Mobile Phones", "content": "Do not use mobile phones while driving unless hands-free." },
+
+    { "title": "Hazard Lights", "content": "Use hazard lights only in emergencies or when vehicle is stopped dangerously." },
+    { "title": "Defensive Driving", "content": "Always anticipate potential hazards and react early." },
+
+    { "title": "Test Preparation", "content": "Be calm, follow instructions carefully, and drive smoothly." },
+    { "title": "Observation", "content": "Maintain good observation by frequently checking mirrors." },
+
+    { "title": "Speed Limits", "content": "Urban roads: 50 km/h, National roads: 100 km/h, Motorways: 120 km/h." },
+    { "title": "Traffic Lights", "content": "Stop at red, prepare at amber, go at green if safe." },
+
+    { "title": "Yellow Box", "content": "Do not enter unless exit is clear." },
+    { "title": "Emergency", "content": "Stay calm, switch on hazard lights, and move to a safe place." },
+
+    { "title": "Hill Start", "content": "Use handbrake to prevent rollback while starting on a slope." },
+    { "title": "Clutch Control", "content": "Use clutch smoothly to control vehicle speed at low speeds." },
+
+    { "title": "Blind Spots", "content": "Always check blind spots before changing lanes." },
+    { "title": "Safe Distance", "content": "Maintain at least 2-second gap from the vehicle ahead." },
+
+    { "title": "Motorway Driving", "content": "Use slip roads to join and keep left unless overtaking." },
+    { "title": "Horn Use", "content": "Use horn only to warn others of danger." },
+
+    { "title": "Engine Check", "content": "Ensure oil, coolant, and fuel levels are adequate before driving." },
+    { "title": "Tyres", "content": "Check tyre pressure and tread depth regularly." }
+  ]
+}

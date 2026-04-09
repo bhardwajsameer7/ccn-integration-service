@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: ccn-integration-service
+    mode: rct
+  profiles:
+    active: rct
+  config:
+    import: optional:classpath:config-${spring.application.mode}.yml
+
+server:
+  error:
+    include-stacktrace: never
+  servlet:
+    context-path: /${spring.application.name}
